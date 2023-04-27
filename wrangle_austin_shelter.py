@@ -55,23 +55,32 @@ def acquire_austin_animal_shelter_data():
     # check if intake and outcome files exist in the local directory
     if os.path.exists(intake_filename):
         # read in csv files for intakes for animals
+        print('reading intake data from local file')
         intakes = pd.read_csv(intake_filename)
+        # if the file was downloaded from webpage it will not have 'unnamed:_0' column
+        # but if the file was created by function it will have 'unnamed:_0' column
+        if 'Unnamed:_0' in intakes.columns.to_list():
+            intakes.drop(columns='Unnamed:_0', inplace=True, index_col=0)
     else:
         # if the intake file does not exist locally, then download the data via api
         intakes = get_data(intake_api)
         intakes.datetime = pd.to_datetime(intakes.datetime)
-        intakes.drop(datetime2, inplace=True)
         intakes.to_csv(intake_filename)
         
     # check if outcome file exist in the local directory
     if os.path.exists(outcome_filename):
         # read in csv files for outcomes for animals
-        outcomes = pd.read_csv(outcome_filename)
+        print('reading outcome data from local file')
+        outcomes = pd.read_csv(outcome_filename, index_col=0)
+        # if the file was downloaded from webpage it will not have 'unnamed:_0' column
+        # but if the file was created by function it will have 'unnamed:_0' column
+        if 'Unnamed:_0' in outcomes.columns.to_list():
+            outcomes.drop(columns='Unnamed:_0', inplace=True)
     else:
         # if the intake file does not exist locally, then download the data via api
         outcomes = get_data(outcome_api)
         outcomes.datetime = pd.to_datetime(outcomes.datetime)
-        outcomes.drop(datetime2, inplace=True)
+        outcomes.drop(columns='monthyear', inplace=True)
         outcomes.to_csv(outcome_filename)
         
     # rename column names to lowercase and remove spaces
@@ -96,15 +105,21 @@ def prepare_austin_animal_shelter(animals):
     # change dtypes to datetime
     animals['datetime_in'] = pd.to_datetime(animals.datetime_in)
     animals['datetime_out'] = pd.to_datetime(animals.datetime_out)
+    animals['date_of_birth'] = pd.to_datetime(animals.date_of_birth)
+    
     # remove redundant columns
     animals = animals.drop(columns=['color_out', 'breed_out', 
                                     'name_out', 'animal_type_out'])
+    # drop redundaant columns for month_year
+    if 'monthyear_in' in animals.columns.to_list():
+        animals = animals.drop(columns='monthyear_in')
+    elif 'monthyear_out' in animals.columns.to_list():
+        animals = animals.drop(columns='monthyear_out')
     # rename remaining columns
     animals = animals.rename(columns={'color_in':'color', 
                                       'breed_in':'breed', 'name_in':'name',
                                       'animal_type_in':'animal_type'})
-    # drop redundaant columns for month_year
-#     animals = animals.drop(columns=['monthyear_in', 'monthyear_out'])
+    
     # remove the 2 rows with nullsin the sex_upon_intake column, 
     # 1 of which is a test row
     animals = animals[animals.sex_upon_intake.isna() == False]
@@ -156,14 +171,18 @@ def wrangle_austin_animal_shelter():
     animals_filename = 'animal_shelter.csv'
     # check if a cached file of the dataset exists in the local directory
     if os.path.exists(animals_filename):
-        animals = pd.read_csv(animals_filename)
+        print('getting animal shelter data from local file')
+        animals = pd.read_csv(animals_filename, index_col=0)
     else:
         # acquire data from csv files
         animals = acquire_austin_animal_shelter_data()
         # prepare the data
         animals = prepare_austin_animal_shelter(animals)
         animals.to_csv(animals_filename)
-        
+    
+    # remove 'unnamed:_0' column if it exists
+    if 'unnamed:_0' in animals.columns.to_list():
+        animals.drop(columns='unnamed:_0', inplace=True)
     # split data into train, validate and test groups
     train, validate, test = split_austin_animal_shelter(animals)
     # return all the data
