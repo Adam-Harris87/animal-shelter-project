@@ -1,6 +1,40 @@
+# import data manipulation libraries
 import numpy as np
 import pandas as pd
+# import file acquisition tools
+import os
+import requests
+# import splitting function
 from sklearn.model_selection import train_test_split
+
+#-----------------------------------------------
+
+def get_data(url, offset=1000):
+    '''
+    this function will return a dataFrame with all of the results from the passed url
+    until the last page of results
+    '''
+    print('downloading data via api')
+    # create request.get for passed url
+    page = requests.get(url)
+    # create a dataframe withe the first page results
+    df = pd.DataFrame(page.json())
+    # set first offset amount
+    x=offset
+    # loop through all pages of results for passed url
+    while page.json():
+        # set the page url to the next page url
+        next_url = url + f'&$offset={x}'
+        page = requests.get(next_url)
+        df = pd.concat([df, pd.DataFrame(page.json())], axis=0)
+        x += offset
+        print(f'{x}')
+        if x >= 170000:
+            break
+    # display how many rows were downloaded
+    print(f'{df.shape[0]} records were downloaded via api')
+    # return the datframe
+    return df
 
 #-----------------------------------------------
 
@@ -10,15 +44,43 @@ def acquire_austin_animal_shelter_data():
     it will then rename to the column names to lowercase and remove spaces,
     it will then combine the csv files into one DataFrame and return the combined df.
     '''
-    # read in csv files for intake and outcomes for animals
-    intakes = pd.read_csv('Austin_Animal_Center_Intakes.csv')
-    outcomes = pd.read_csv('Austin_Animal_Center_Outcomes.csv')
+    # set the filenames we are looking for
+    intake_filename = 'Austin_Animal_Center_Intakes.csv'
+    outcome_filename = 'Austin_Animal_Center_Outcomes.csv'
+    # set the api paths
+    token = 'Fq34fTdVZDfsd8JcA1Vq4Qf1s'
+    intake_api = f'https://data.austintexas.gov/resource/wter-evkm.json?$$app_token={token}'
+    outcome_api = f'https://data.austintexas.gov/resource/9t4d-g238.json?$$app_token={token}'
+    
+    # check if intake and outcome files exist in the local directory
+    if os.path.exists(intake_filename):
+        # read in csv files for intakes for animals
+        intakes = pd.read_csv(intake_filename)
+    else:
+        # if the intake file does not exist locally, then download the data via api
+        intakes = get_data(intake_api)
+        intakes.datetime = pd.to_datetime(intakes.datetime)
+        intakes.drop(datetime2, inplace=True)
+        intakes.to_csv(intake_filename)
+        
+    # check if outcome file exist in the local directory
+    if os.path.exists(outcome_filename):
+        # read in csv files for outcomes for animals
+        outcomes = pd.read_csv(outcome_filename)
+    else:
+        # if the intake file does not exist locally, then download the data via api
+        outcomes = get_data(outcome_api)
+        outcomes.datetime = pd.to_datetime(outcomes.datetime)
+        outcomes.drop(datetime2, inplace=True)
+        outcomes.to_csv(outcome_filename)
+        
     # rename column names to lowercase and remove spaces
     intakes.columns = intakes.columns.str.lower().str.replace(' ','_').to_list()
     outcomes.columns = outcomes.columns.str.lower().str.replace(' ','_').to_list()
     # merge dataframes into one
     animals = pd.merge(left=intakes, right=outcomes, how='inner', 
                        on='animal_id', suffixes=('_in','_out'))
+    
     # return the combined dataframe
     return animals
 
@@ -42,10 +104,11 @@ def prepare_austin_animal_shelter(animals):
                                       'breed_in':'breed', 'name_in':'name',
                                       'animal_type_in':'animal_type'})
     # drop redundaant columns for month_year
-    animals = animals.drop(columns=['monthyear_in', 'monthyear_out'])
+#     animals = animals.drop(columns=['monthyear_in', 'monthyear_out'])
     # remove the 2 rows with nullsin the sex_upon_intake column, 
     # 1 of which is a test row
     animals = animals[animals.sex_upon_intake.isna() == False]
+    
     # create a new column with binned outcome_type
     animals['outcome'] = np.where(animals.outcome_type == 'Adoption', 'adopted',
                           np.where(animals.outcome_type == 'Return to Owner', 'returned',
@@ -90,10 +153,17 @@ def wrangle_austin_animal_shelter():
     split into one function call and will return the cleaned dataframe along with 
     the train, validate and test dataframes.
     '''
-    # acquire data from csv files
-    animals = acquire_austin_animal_shelter_data()
-    # prepare the data
-    animals = prepare_austin_animal_shelter(animals)
+    animals_filename = 'animal_shelter.csv'
+    # check if a cached file of the dataset exists in the local directory
+    if os.path.exists(animals_filename):
+        animals = pd.read_csv(animals_filename)
+    else:
+        # acquire data from csv files
+        animals = acquire_austin_animal_shelter_data()
+        # prepare the data
+        animals = prepare_austin_animal_shelter(animals)
+        animals.to_csv(animals_filename)
+        
     # split data into train, validate and test groups
     train, validate, test = split_austin_animal_shelter(animals)
     # return all the data
