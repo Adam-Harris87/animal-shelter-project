@@ -6,6 +6,7 @@ import os
 import requests
 # import splitting function
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 #-----------------------------------------------
 
@@ -126,17 +127,44 @@ def prepare_austin_animal_shelter(animals):
     
     # create a new column with binned outcome_type
     animals['outcome'] = np.where(animals.outcome_type == 'Adoption', 'adopted',
-                          np.where(animals.outcome_type == 'Return to Owner', 'returned',
+                          np.where(animals.outcome_type == 'Return to Owner', 'adopted',
                           np.where(animals.outcome_type == 'Transfer', 'transfered',
                           np.where(animals.outcome_type == 'Euthanasia', 'death',
-                          np.where(animals.outcome_type == 'Rto-Adopt', 'returned',
+                          np.where(animals.outcome_type == 'Rto-Adopt', 'adopted',
                           np.where(animals.outcome_type == 'Died', 'death',
                           np.where(animals.outcome_type == 'Disposal', 'death',
-                          np.where(animals.outcome_type == 'Missing', 'unknown',
-                          np.where(animals.outcome_type == 'Stolen', 'unknown',
+                          np.where(animals.outcome_type == 'Missing', 'transfered',
+                          np.where(animals.outcome_type == 'Stolen', 'adopted',
                           np.where(animals.outcome_type == 'Relocate', 'transfered',
-                          np.where(animals.outcome_type.isnull() == True, 'unknown', ''
+                          np.where(animals.outcome_type.isnull() == True, 'transfered', ''
                                   )))))))))))
+    
+    # create a column of bool values for if the animal has a name
+    animals['has_name'] = np.where(animals.name.isna(), False, True)
+    animals.name = animals.name.fillna('None')
+    
+    # fill null values in the outcome_subtype with 'None' since we alread have a 
+    # main outcome type for these rows
+    animals.outcome_subtype = animals.outcome_subtype.fillna('None')
+    
+    # drop the remaining null values (less than 100) for now, these are animals without
+    # outcomes, which may mean they are still at the shelter
+    animals = animals.dropna()
+
+
+    # encode categorical columns so we can use them during explore and modeling
+    # make a list of columns to encode
+    encode_cols = ['intake_type', 'intake_condition', 'animal_type', 'sex_upon_intake',
+               'breed', 'color', 'sex_upon_outcome', 'outcome_subtype']
+    # create encoder object
+    le = LabelEncoder()
+    for col in encode_cols:
+        le.fit(animals[col])
+        # create a new column with the encoded values
+        animals[f'{col}_encoded'] = le.transform(animals[col])
+    # we want to one-hot encode the outcome variable since that is our target
+    animals = pd.concat([animals, pd.get_dummies(animals.outcome)], axis=1)
+    
     # return the modified dataframe
     return animals
 
@@ -170,15 +198,15 @@ def wrangle_austin_animal_shelter():
     '''
     animals_filename = 'animal_shelter.csv'
     # check if a cached file of the dataset exists in the local directory
-    if os.path.exists(animals_filename):
-        print('getting animal shelter data from local file')
-        animals = pd.read_csv(animals_filename, index_col=0)
-    else:
+    # if os.path.exists(animals_filename):
+    #     print('getting animal shelter data from local file')
+    #     animals = pd.read_csv(animals_filename, index_col=0)
+    # else:
         # acquire data from csv files
-        animals = acquire_austin_animal_shelter_data()
-        # prepare the data
-        animals = prepare_austin_animal_shelter(animals)
-        animals.to_csv(animals_filename)
+    animals = acquire_austin_animal_shelter_data()
+    # prepare the data
+    animals = prepare_austin_animal_shelter(animals)
+    animals.to_csv(animals_filename)
     
     # remove 'unnamed:_0' column if it exists
     if 'unnamed:_0' in animals.columns.to_list():
