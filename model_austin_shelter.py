@@ -12,10 +12,14 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 
+#---------------------------------------------------
+
 def get_baseline(train, y_col):
     baseline = [1] * len(train)
     print(f'The baseline prediction score accuracy is: \
 {(train[y_col] == baseline).mean():.2%}')
+
+#---------------------------------------------------
 
 def get_decision_tree(train_X, validate_X, train_y, validate_y):
     '''
@@ -41,6 +45,8 @@ def get_decision_tree(train_X, validate_X, train_y, validate_y):
     # return the decision tree model for use in other functions
     return dt
 
+#---------------------------------------------------
+
 def get_random_forest(train_X, validate_X, train_y, validate_y):
     '''
     This function will use a random forest machine learning model to predict 
@@ -64,6 +70,8 @@ def get_random_forest(train_X, validate_X, train_y, validate_y):
     # return the random forest model for use in other functions
     return rf
 
+#---------------------------------------------------
+
 def get_logistic_regression(train_X, validate_X, train_y, validate_y):
     '''
     This function will use a logistic regression machine learning model to predict 
@@ -86,6 +94,8 @@ def get_logistic_regression(train_X, validate_X, train_y, validate_y):
     print(f'Recall score on validate: {recall_score(validate_y, lr_val_preds):.2%}')
     # return the logistic regression model for use in other functions
     return lr
+
+#---------------------------------------------------
 
 def get_rf_test(test_X, test_y, rf):
     '''

@@ -15,7 +15,7 @@ def check_chi2_hypothesis(data, x, y, α=0.05):
     '''
     This function will check the provided x and y variables from the 
     provided dataset (data) for statistical relevence according 
-    to a pearsonsr test (this is changable by entering the desired test as a kwarg)
+    to a chi-square test (this is changable by entering the desired test as a kwarg)
     '''
     # run the requested statistical test on variables x and y from data
     observed = pd.crosstab(data[x], data[y])
@@ -24,8 +24,8 @@ def check_chi2_hypothesis(data, x, y, α=0.05):
     if p < α:
         # print results rejecting null hypothesis
         print(f"Since the p-value is less than {α}, \n\
-we can reject the null hypothesis and conclude that {x} and {y} are correlated.")
-        print(f"The correlation coefficient between \
+we can reject the null hypothesis and conclude that {x} and {y} are not independent.")
+        print(f"The chi-squared coefficient between \
 {x} and {y} is {chi2:.2f} with a p-value of {p:.4f}")
         print('_______________________________________________________')
     # if p-value >= alpha, then we fail to reject the null hypothesis
@@ -33,8 +33,18 @@ we can reject the null hypothesis and conclude that {x} and {y} are correlated."
         # print the results failing to reject the null hypothesis
         print(f"Since the p-value is greater than or equal to {α}, \n\
 we fail to reject the null hypothesis and conclude \n\
-that there is insufficient evidence to suggest a correlation between {x} and {y}.")
+that {x} and {y} are independent.")
         print('_______________________________________________________')
+
+#----------------------------------------------------------------
+
+def get_plot_outcomes(animals):
+    animals.outcome.value_counts().plot.bar()
+    plt.title('Adoption Accounts for 69% of Outcomes', size=20)
+    plt.xlabel('Outcome of Trip to Animal Shelter', size=18)
+    plt.ylabel('Number of Animals with Outcome', size = 18)
+    plt.xticks(size=16)
+    plt.show()
 
 #----------------------------------------------------------------
 
@@ -84,8 +94,19 @@ def get_plot_named_vs_unnamed(train):
 #----------------------------------------------------------------
 
 def get_plot_outcomes_by_day(train):
+    train['outcome_day'] = train.datetime_out.dt.day_name()
+    train['weekday_num'] = train.datetime_out.dt.day_of_week
     train.groupby('outcome_day').outcome.value_counts().unstack().plot.area()
     plt.title('Outcome Types by Day of Week', size=20)
     plt.xlabel('Day of Week', size=16)
+    plt.ylabel('Number of Animal Outcomes', size=16)
+    plt.show()
+
+#----------------------------------------------------------------
+
+def get_plot_outcomes_by_sex(train):
+    sns.histplot(data=train, x='outcome', hue='sex_upon_outcome', stat='count')
+    plt.title('Outcome Types by Sex Upon Outcome', size=20)
+    plt.xlabel('Outcome', size=16)
     plt.ylabel('Number of Animal Outcomes', size=16)
     plt.show()

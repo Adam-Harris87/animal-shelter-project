@@ -57,11 +57,11 @@ def acquire_austin_animal_shelter_data():
     if os.path.exists(intake_filename):
         # read in csv files for intakes for animals
         print('reading intake data from local file')
-        intakes = pd.read_csv(intake_filename)
+        intakes = pd.read_csv(intake_filename, index_col=0)
         # if the file was downloaded from webpage it will not have 'unnamed:_0' column
         # but if the file was created by function it will have 'unnamed:_0' column
         if 'Unnamed:_0' in intakes.columns.to_list():
-            intakes.drop(columns='Unnamed:_0', inplace=True, index_col=0)
+            intakes.drop(columns='Unnamed:_0', inplace=True)
     else:
         # if the intake file does not exist locally, then download the data via api
         intakes = get_data(intake_api)
