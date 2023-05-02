@@ -27,6 +27,7 @@ def get_data(url, offset=1000):
         # set the page url to the next page url
         next_url = url + f'&$offset={x}'
         page = requests.get(next_url)
+        # add page's data to the dataframe
         df = pd.concat([df, pd.DataFrame(page.json())], axis=0)
         x += offset
         print(f'{x}')
